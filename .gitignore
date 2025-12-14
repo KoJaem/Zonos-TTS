@@ -14,3 +14,12 @@ wheels/
 
 # Sample files
 sample.wav
+
+# local models
+config.json
+model.safetensors
+ResNet293_SimAM_ASP_base.pt
+ResNet293_SimAM_ASP_base_LDA-128.pt
+
+# env
+.env

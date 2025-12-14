@@ -120,3 +120,75 @@ uv run gradio_interface.py
 - macOS에서는 Docker보다 Python + uv 방식이 안정적
 
 이 문서 하나만 있으면 Zonos 재사용 가능.
+
+---
+
+## 6. 로컬 모델 수동 설정 (선택)
+
+인터넷 연결 없이 사용하거나, 모델을 직접 관리하고 싶다면 아래 절차를 따르세요.
+
+### 6-1. 환경 변수 설정 (필수)
+`.env` 파일을 사용하여 오프라인 모드를 제어할 수 있습니다.
+
+1. 프로젝트 루트에 `.env` 파일 생성 (이미 존재할 수 있음)
+2. `useOffline` 값 설정:
+
+```properties
+# 오프라인 강제 모드 (로컬 파일만 사용, 없으면 에러)
+useOffline=true
+
+# 온라인/하이브리드 모드 (로컬 파일 확인 후 없으면 다운로드)
+useOffline=false
+```
+
+### 6-2. 폴더 생성
+프로젝트 폴더(Zonos) 안에 `models` 폴더를 생성하고, 그 안에 아래 구조대로 폴더를 만드세요.
+
+```
+Zonos
+└── models
+    └── Zyphra
+        ├── Zonos-v0.1-transformer
+        └── Zonos-v0.1-speaker-embedding
+```
+
+### 6-2. 파일 다운로드 및 배치
+각 폴더에 맞는 파일을 다운로드해서 넣어주세요.
+
+**1. 메인 모델 (Zonos-v0.1-transformer)**
+*   **위치**: `Zonos/models/Zyphra/Zonos-v0.1-transformer/`
+*   **필수 파일**:
+    https://huggingface.co/Zyphra/Zonos-v0.1-transformer/tree/main
+    에서 `config.json` 과 `model.safetensors` 다운로드
+
+**2. 스피커 임베딩 모델 (목소리 복제용)**
+*   **위치**: `Zonos/models/Zyphra/Zonos-v0.1-speaker-embedding/`
+*   **필수 파일** (OS 무관, 모든 OS 공통):
+    https://huggingface.co/Zyphra/Zonos-v0.1-speaker-embedding/tree/main 에서 `ResNet293_SimAM_ASP_base.pt` 과 `ResNet293_SimAM_ASP_base_LDA-128.pt` 다운로드
+
+**3. DAC 모델 (오디오 처리용)**
+*   **위치**: `Zonos/models/descript/dac_44khz/`
+*   **필수 파일**:
+    https://huggingface.co/descript/dac_44khz/tree/main 에서 `config.json`, `model.safetensors`, `preprocessor_config.json` 다운로드
+
+경로는 다음과 같습니다.
+```
+Project Root
+└── models
+    ├── Zyphra
+    │   ├── Zonos-v0.1-transformer
+    │   │   ├── config.json
+    │   │   └── model.safetensors
+    │   └── Zonos-v0.1-speaker-embedding
+    │       ├── ResNet293_SimAM_ASP_base.pt
+    │       └── ResNet293_SimAM_ASP_base_LDA-128.pt
+    └── descript
+        └── dac_44khz
+            ├── config.json
+            ├── model.safetensors
+            └── preprocessor_config.json
+```
+
+
+## 허깅페이스 캐싱 지우기
+rm -rf ~/.cache/huggingface/hub

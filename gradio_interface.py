@@ -21,7 +21,19 @@ def load_model_if_needed(model_choice: str):
             del CURRENT_MODEL
             torch.cuda.empty_cache()
         print(f"Loading {model_choice} model...")
-        CURRENT_MODEL = Zonos.from_pretrained(model_choice, device=device)
+
+        from config import get_local_model_path, has_local_model
+        if has_local_model(model_choice):
+             print(f"--> Found local model for {model_choice}, loading from disk.")
+             CURRENT_MODEL = Zonos.from_local(
+                config_path=get_local_model_path(model_choice, "config.json"),
+                model_path=get_local_model_path(model_choice, "model.safetensors"),
+                device=device
+            )
+        else:
+            print(f"--> Local model not found for {model_choice}, using Hugging Face Hub.")
+            CURRENT_MODEL = Zonos.from_pretrained(model_choice, device=device)
+            
         CURRENT_MODEL.requires_grad_(False).eval()
         CURRENT_MODEL_TYPE = model_choice
         print(f"{model_choice} model loaded successfully!")

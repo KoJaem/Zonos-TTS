@@ -1,4 +1,5 @@
 import math
+import os
 from functools import cache
 
 import torch
@@ -388,16 +389,34 @@ class SpeakerEmbedding(nn.Module):
 class SpeakerEmbeddingLDA(nn.Module):
     def __init__(self, device: str = DEFAULT_DEVICE):
         super().__init__()
-        spk_model_path = hf_hub_download(
-            repo_id="Zyphra/Zonos-v0.1-speaker-embedding",
-            filename="ResNet293_SimAM_ASP_base.pt",
-        )
-        lda_spk_model_path = hf_hub_download(
-            repo_id="Zyphra/Zonos-v0.1-speaker-embedding",
-            filename="ResNet293_SimAM_ASP_base_LDA-128.pt",
-        )
-
         self.device = device
+        
+        from config import get_local_model_path, has_local_model, USE_OFFLINE
+        BASE_REPO = "Zyphra/Zonos-v0.1-speaker-embedding"
+        
+        # Check if local models exist (checking one file is enough for our logic)
+        # We manually construct paths because SpeakerEmbedding doesn't use standard config.json
+        local_spk_path = get_local_model_path(BASE_REPO, "ResNet293_SimAM_ASP_base.pt")
+        local_lda_path = get_local_model_path(BASE_REPO, "ResNet293_SimAM_ASP_base_LDA-128.pt")
+        
+        if USE_OFFLINE:
+            if local_spk_path and local_lda_path and os.path.exists(local_spk_path) and os.path.exists(local_lda_path):
+                 print("--> Found local speaker embedding models, loading from disk (OFFLINE MODE).")
+                 spk_model_path = local_spk_path
+                 lda_spk_model_path = local_lda_path
+            else:
+                 raise FileNotFoundError(f"Offline mode is enabled but local model files for {BASE_REPO} are missing.")
+        else:
+             print("--> Using Hugging Face Hub (or HF Cache) for speaker embedding.")
+             spk_model_path = hf_hub_download(
+                repo_id=BASE_REPO,
+                filename="ResNet293_SimAM_ASP_base.pt",
+            )
+             lda_spk_model_path = hf_hub_download(
+                repo_id=BASE_REPO,
+                filename="ResNet293_SimAM_ASP_base_LDA-128.pt",
+            )
+
         with torch.device(device):
             self.model = SpeakerEmbedding(spk_model_path, device)
             lda_sd = torch.load(lda_spk_model_path, weights_only=True)

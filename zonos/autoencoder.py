@@ -8,7 +8,20 @@ from transformers.models.dac import DacModel
 class DACAutoencoder:
     def __init__(self):
         super().__init__()
-        self.dac = DacModel.from_pretrained("descript/dac_44khz")
+        super().__init__()
+        from config import USE_OFFLINE, LOCAL_MODELS_DIR
+        
+        dac_repo = "descript/dac_44khz"
+        if USE_OFFLINE:
+            # Construct the local path: models/descript/dac_44khz
+            local_dac_path = LOCAL_MODELS_DIR / dac_repo
+            if local_dac_path.exists():
+                print(f"Loading '{dac_repo}' from local disk: {local_dac_path} (OFFLINE MODE)")
+                self.dac = DacModel.from_pretrained(str(local_dac_path))
+            else:
+                 raise FileNotFoundError(f"Offline mode is enabled but local path for {dac_repo} is missing: {local_dac_path}")
+        else:
+            self.dac = DacModel.from_pretrained(dac_repo)
         self.dac.eval().requires_grad_(False)
         self.codebook_size = self.dac.config.codebook_size
         self.num_codebooks = self.dac.quantizer.n_codebooks
