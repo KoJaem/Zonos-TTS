@@ -22,17 +22,29 @@ def load_model_if_needed(model_choice: str):
             torch.cuda.empty_cache()
         print(f"Loading {model_choice} model...")
 
-        from config import get_local_model_path, has_local_model
-        if has_local_model(model_choice):
-             print(f"--> Found local model for {model_choice}, loading from disk.")
-             CURRENT_MODEL = Zonos.from_local(
-                config_path=get_local_model_path(model_choice, "config.json"),
-                model_path=get_local_model_path(model_choice, "model.safetensors"),
-                device=device
-            )
+        from config import get_local_model_path, has_local_model, USE_OFFLINE
+        
+        if USE_OFFLINE:
+            if has_local_model(model_choice):
+                 print(f"--> Found local model for {model_choice}, loading from disk (OFFLINE MODE).")
+                 CURRENT_MODEL = Zonos.from_local(
+                    config_path=get_local_model_path(model_choice, "config.json"),
+                    model_path=get_local_model_path(model_choice, "model.safetensors"),
+                    device=device
+                )
+            else:
+                 raise FileNotFoundError(f"Offline mode is enabled but local model files for {model_choice} are missing.")
         else:
-            print(f"--> Local model not found for {model_choice}, using Hugging Face Hub.")
-            CURRENT_MODEL = Zonos.from_pretrained(model_choice, device=device)
+            if has_local_model(model_choice):
+                 print(f"--> Found local model for {model_choice}, loading from disk.")
+                 CURRENT_MODEL = Zonos.from_local(
+                    config_path=get_local_model_path(model_choice, "config.json"),
+                    model_path=get_local_model_path(model_choice, "model.safetensors"),
+                    device=device
+                )
+            else:
+                print(f"--> Local model not found for {model_choice}, using Hugging Face Hub.")
+                CURRENT_MODEL = Zonos.from_pretrained(model_choice, device=device)
             
         CURRENT_MODEL.requires_grad_(False).eval()
         CURRENT_MODEL_TYPE = model_choice
@@ -239,13 +251,13 @@ def build_interface():
                 )
                 text = gr.Textbox(
                     label="Text to Synthesize",
-                    value="Zonos uses eSpeak for text to phoneme conversion!",
+                    value="안녕하세요 여러분. 저는 고잼님의 TTS 봇입니다.",
                     lines=4,
                     max_length=500,  # approximately
                 )
                 language = gr.Dropdown(
                     choices=supported_language_codes,
-                    value="en-us",
+                    value="ko",
                     label="Language Code",
                     info="Select a language code.",
                 )
