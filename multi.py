@@ -6,9 +6,34 @@ from zonos.model import Zonos
 from zonos.conditioning import make_cond_dict
 from zonos.utils import DEFAULT_DEVICE as device
 
+from config import get_local_model_path, has_local_model, USE_OFFLINE
+
 def load_model(model_choice):
     print(f"Loading {model_choice} model...")
-    model = Zonos.from_pretrained(model_choice, device=device)
+    
+    model = None
+    if USE_OFFLINE:
+        if has_local_model(model_choice):
+             print(f"--> Found local model for {model_choice}, loading from disk (OFFLINE MODE).")
+             model = Zonos.from_local(
+                config_path=get_local_model_path(model_choice, "config.json"),
+                model_path=get_local_model_path(model_choice, "model.safetensors"),
+                device=device
+            )
+        else:
+             raise FileNotFoundError(f"Offline mode is enabled but local model files for {model_choice} are missing.")
+    else:
+        if has_local_model(model_choice):
+             print(f"--> Found local model for {model_choice}, loading from disk.")
+             model = Zonos.from_local(
+                config_path=get_local_model_path(model_choice, "config.json"),
+                model_path=get_local_model_path(model_choice, "model.safetensors"),
+                device=device
+            )
+        else:
+            print(f"--> Local model not found for {model_choice}, using Hugging Face Hub.")
+            model = Zonos.from_pretrained(model_choice, device=device)
+
     model.requires_grad_(False).eval()
     print(f"{model_choice} model loaded successfully!")
     return model

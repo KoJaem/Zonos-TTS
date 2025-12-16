@@ -149,3 +149,6 @@ macOS용 Python이 시스템의 SSL 인증서를 기본적으로 신뢰하지 �
 export SSL_CERT_FILE=/etc/ssl/cert.pem
 uv sync
 ```
+
+## 허깅페이스 캐싱 지우기
+rm -rf ~/.cache/huggingface/hub
