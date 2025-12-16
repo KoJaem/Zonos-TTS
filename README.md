@@ -120,3 +120,30 @@ uv run gradio_interface.py
 - macOS에서는 Docker보다 Python + uv 방식이 안정적
 
 이 문서 하나만 있으면 Zonos 재사용 가능.
+
+---
+
+## 6. 트러블슈팅 (문제 해결)
+
+### 6-1. uv sync 실행 시 SSL 인증서 오류 발생
+
+**증상:**
+`uv sync` 실행 중 `ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED]` 오류가 발생하며 멈추는 경우.
+
+**원인:**
+macOS용 Python이 시스템의 SSL 인증서를 기본적으로 신뢰하지 않아 발생하는 문제입니다.
+
+**해결 방법:**
+
+**방법 1 (권장):** 파이썬 인증서 설치 스크립트 실행
+터미널에 아래 명령어를 입력하여 인증서를 설치합니다 (Python 3.12 기준).
+```bash
+/Applications/Python\ 3.12/Install\ Certificates.command
+```
+
+**방법 2 (임시):** 환경변수 설정
+위 방법이 안 되거나 파일을 찾을 수 없는 경우, 아래 명령어를 입력하고 다시 `uv sync`를 실행합니다.
+```bash
+export SSL_CERT_FILE=/etc/ssl/cert.pem
+uv sync
+```
