@@ -123,72 +123,29 @@ uv run gradio_interface.py
 
 ---
 
-## 6. 로컬 모델 수동 설정 (선택)
+## 6. 트러블슈팅 (문제 해결)
 
-인터넷 연결 없이 사용하거나, 모델을 직접 관리하고 싶다면 아래 절차를 따르세요.
+### 6-1. uv sync 실행 시 SSL 인증서 오류 발생
 
-### 6-1. 환경 변수 설정 (필수)
-`.env` 파일을 사용하여 오프라인 모드를 제어할 수 있습니다.
+**증상:**
+`uv sync` 실행 중 `ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED]` 오류가 발생하며 멈추는 경우.
 
-1. 프로젝트 루트에 `.env` 파일 생성 (이미 존재할 수 있음)
-2. `useOffline` 값 설정:
+**원인:**
+macOS용 Python이 시스템의 SSL 인증서를 기본적으로 신뢰하지 않아 발생하는 문제입니다.
 
-```properties
-# 오프라인 강제 모드 (로컬 파일만 사용, 없으면 에러)
-useOffline=true
+**해결 방법:**
 
-# 온라인/하이브리드 모드 (로컬 파일 확인 후 없으면 다운로드)
-useOffline=false
+**방법 1 (권장):** 파이썬 인증서 설치 스크립트 실행
+터미널에 아래 명령어를 입력하여 인증서를 설치합니다 (Python 3.12 기준).
+
+```bash
+/Applications/Python\ 3.12/Install\ Certificates.command
 ```
 
-### 6-2. 폴더 생성
-프로젝트 폴더(Zonos) 안에 `models` 폴더를 생성하고, 그 안에 아래 구조대로 폴더를 만드세요.
+**방법 2 (임시):** 환경변수 설정
+위 방법이 안 되거나 파일을 찾을 수 없는 경우, 아래 명령어를 입력하고 다시 `uv sync`를 실행합니다.
 
+```bash
+export SSL_CERT_FILE=/etc/ssl/cert.pem
+uv sync
 ```
-Zonos
-└── models
-    └── Zyphra
-        ├── Zonos-v0.1-transformer
-        └── Zonos-v0.1-speaker-embedding
-```
-
-### 6-2. 파일 다운로드 및 배치
-각 폴더에 맞는 파일을 다운로드해서 넣어주세요.
-
-**1. 메인 모델 (Zonos-v0.1-transformer)**
-*   **위치**: `Zonos/models/Zyphra/Zonos-v0.1-transformer/`
-*   **필수 파일**:
-    https://huggingface.co/Zyphra/Zonos-v0.1-transformer/tree/main
-    에서 `config.json` 과 `model.safetensors` 다운로드
-
-**2. 스피커 임베딩 모델 (목소리 복제용)**
-*   **위치**: `Zonos/models/Zyphra/Zonos-v0.1-speaker-embedding/`
-*   **필수 파일** (OS 무관, 모든 OS 공통):
-    https://huggingface.co/Zyphra/Zonos-v0.1-speaker-embedding/tree/main 에서 `ResNet293_SimAM_ASP_base.pt` 과 `ResNet293_SimAM_ASP_base_LDA-128.pt` 다운로드
-
-**3. DAC 모델 (오디오 처리용)**
-*   **위치**: `Zonos/models/descript/dac_44khz/`
-*   **필수 파일**:
-    https://huggingface.co/descript/dac_44khz/tree/main 에서 `config.json`, `model.safetensors`, `preprocessor_config.json` 다운로드
-
-경로는 다음과 같습니다.
-```
-Project Root
-└── models
-    ├── Zyphra
-    │   ├── Zonos-v0.1-transformer
-    │   │   ├── config.json
-    │   │   └── model.safetensors
-    │   └── Zonos-v0.1-speaker-embedding
-    │       ├── ResNet293_SimAM_ASP_base.pt
-    │       └── ResNet293_SimAM_ASP_base_LDA-128.pt
-    └── descript
-        └── dac_44khz
-            ├── config.json
-            ├── model.safetensors
-            └── preprocessor_config.json
-```
-
-
-## 허깅페이스 캐싱 지우기
-rm -rf ~/.cache/huggingface/hub
