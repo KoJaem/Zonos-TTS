@@ -38,13 +38,13 @@ def load_model(model_choice):
     print(f"{model_choice} model loaded successfully!")
     return model
 
-def generate_audio_for_text(model, text, language, speaker_embedding, output_path, seed=420):
+def generate_audio_for_text(model, text, language, speaker_embedding, output_path, prefix_audio_path=None, seed=420):
     # Default parameters based on gradio_interface.py
     emotion_tensor = torch.tensor([1.0, 0.05, 0.05, 0.05, 0.05, 0.05, 0.1, 0.2], device=device) # Happy, Sad, Disgust, Fear, Surprise, Anger, Other, Neutral
     vq_val = 0.78
     vq_tensor = torch.tensor([vq_val] * 8, device=device).unsqueeze(0)
     
-    fmax = 24000.0
+    fmax = 24000.0  # Match Gradio default
     pitch_std = 45.0
     speaking_rate = 15.0
     dnsmos_ovrl = 4.0
@@ -74,14 +74,24 @@ def generate_audio_for_text(model, text, language, speaker_embedding, output_pat
         dnsmos_ovrl=dnsmos_ovrl,
         speaker_noised=speaker_noised,
         device=device,
-        unconditional_keys=[], # unconditional_keys
+        unconditional_keys=["emotion"], # Match gradio default for better quality
     )
     conditioning = model.prepare_conditioning(cond_dict)
     
     max_new_tokens = 86 * 30 # roughly 30 seconds max
     
+    # Handle prefix audio (silence)
+    audio_prefix_codes = None
+    if prefix_audio_path is not None and os.path.exists(prefix_audio_path):
+        wav_prefix, sr_prefix = torchaudio.load(prefix_audio_path)
+        wav_prefix = wav_prefix.mean(0, keepdim=True)
+        wav_prefix = model.autoencoder.preprocess(wav_prefix, sr_prefix)
+        wav_prefix = wav_prefix.to(device, dtype=torch.float32)
+        audio_prefix_codes = model.autoencoder.encode(wav_prefix.unsqueeze(0))
+    
     codes = model.generate(
         prefix_conditioning=conditioning,
+        audio_prefix_codes=audio_prefix_codes,
         max_new_tokens=max_new_tokens,
         cfg_scale=cfg_scale,
         batch_size=1,
@@ -130,6 +140,12 @@ def main():
     language = input("언어 코드를 입력하세요 (기본값: ko): ").strip()
     if not language:
         language = "ko"
+        
+    print("\n" + "="*40)
+    print(f"총 {len(texts)}개의 텍스트가 입력되었습니다:")
+    for i, t in enumerate(texts):
+        print(f"{i+1}. {t}")
+    print("="*40 + "\n")
     
     # 4. Optional Speaker Audio
     speaker_audio_path = "cloneAudio/clone.wav"
@@ -159,22 +175,15 @@ def main():
     # 5 & 6. Generate and Save
     print(f"Generating audio for {len(texts)} items...")
     
+    # Randomize seed once for the entire batch (for consistency)
+    base_seed = torch.randint(0, 2**32 - 1, (1,)).item()
+    print(f"Using seed: {base_seed}\n")
+    
     for i, text in enumerate(texts):
         output_filename = f"output{i+1}.wav"
         print(f"Generating {output_filename} for text: {text[:20]}...")
         
-        # If no speaker embedding, we must probably set unconditional_keys=['speaker'] for that call
-        # But wait, the function I wrote `generate_audio_for_text` wraps `make_cond_dict`
-        # Let's adjust `generate_audio_for_text` to handle missing speaker embedding if needed.
-        # For now, simplistic approach.
-        
-        # We need to pass unconditional keys if speaker_embedding is None
-        # But I didn't expose that in `generate_audio_for_text`. 
-        # I'll just rely on `make_cond_dict` or `prepare_conditioning` handling None if possible, 
-        # or better, let's fix the logic in `generate_audio_for_text`?
-        # Actually, let's just update `generate_audio_for_text` inside.
-        
-        generate_audio_for_text(model, text, language, speaker_embedding, output_filename)
+        generate_audio_for_text(model, text, language, speaker_embedding, output_filename, prefix_audio_path="assets/silence_100ms.wav", seed=base_seed)
 
 if __name__ == "__main__":
     main()
