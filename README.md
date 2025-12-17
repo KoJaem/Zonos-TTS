@@ -121,6 +121,10 @@ uv run gradio_interface.py
 
 이 문서 하나만 있으면 Zonos 재사용 가능.
 
+## 7. 관련 문서
+- **[Model.md](Model.md)**: 모델 다운로드 주소 및 로컬 설치 방법
+- **[Multiple.md](Multiple.md)**: 대량 텍스트 자동 변환 스크립트(`multi.py`) 사용법
+
 ---
 
 ## 6. 트러블슈팅 (문제 해결)
