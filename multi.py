@@ -8,6 +8,56 @@ from zonos.utils import DEFAULT_DEVICE as device
 
 from config import get_local_model_path, has_local_model, USE_OFFLINE
 
+def normalize_audio_rms(audio_tensor, target_rms_db=-20.0):
+    """
+    Normalize audio to a target RMS level in dB with soft limiting.
+    
+    This ensures consistent loudness across all files:
+    1. Always normalize to target RMS (-20dB)
+    2. Apply soft limiting if peaks exceed threshold
+    
+    Args:
+        audio_tensor: torch.Tensor of shape (channels, samples) or (samples,)
+        target_rms_db: Target RMS level in dB (default: -20.0 dB)
+    
+    Returns:
+        Normalized audio tensor with consistent RMS
+    """
+    # Avoid processing silent audio
+    if torch.max(torch.abs(audio_tensor)) < 1e-8:
+        return audio_tensor
+    
+    # Calculate current RMS
+    rms = torch.sqrt(torch.mean(audio_tensor ** 2))
+    
+    if rms < 1e-8:
+        return audio_tensor
+    
+    # Convert target dB to linear scale
+    target_rms_linear = 10 ** (target_rms_db / 20.0)
+    
+    # Calculate scaling factor to reach target RMS
+    scaling_factor = target_rms_linear / rms
+    
+    # Apply RMS normalization
+    normalized = audio_tensor * scaling_factor
+    
+    # Apply soft limiting if peaks exceed 0.95
+    # This prevents clipping while maintaining the target RMS
+    peak = torch.max(torch.abs(normalized))
+    
+    if peak > 0.95:
+        # Use tanh-based soft clipping for smooth limiting
+        # This compresses peaks while preserving RMS better than hard limiting
+        normalized = torch.tanh(normalized / peak * 0.95) * 0.95
+        
+        # Re-adjust to maintain target RMS after soft clipping
+        new_rms = torch.sqrt(torch.mean(normalized ** 2))
+        if new_rms > 1e-8:
+            normalized = normalized * (target_rms_linear / new_rms)
+    
+    return normalized
+
 def load_model(model_choice):
     print(f"Loading {model_choice} model...")
     
@@ -103,9 +153,12 @@ def generate_audio_for_text(model, text, language, speaker_embedding, output_pat
     if wav_out.dim() == 2 and wav_out.size(0) > 1:
         wav_out = wav_out[0:1, :]
     
+    # Normalize audio to consistent RMS level
+    wav_out_normalized = normalize_audio_rms(wav_out.squeeze(), target_rms_db=-20.0)
+    
     # Save audio
-    torchaudio.save(output_path, wav_out.squeeze().unsqueeze(0), sr_out)
-    print(f"Saved to {output_path}")
+    torchaudio.save(output_path, wav_out_normalized.unsqueeze(0), sr_out)
+    print(f"Saved to {output_path} (normalized to -20dB RMS)")
 
 def main():
     print("Initializing multi.py...")
