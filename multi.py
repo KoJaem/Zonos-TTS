@@ -112,7 +112,7 @@ def main():
 
     # 2. Receive multiple texts
     texts = []
-    print("Enter texts to synthesize (one per line). Enter an empty line to finish:")
+    print("변환할 텍스트를 입력해주세요 (한 줄에 하나씩). 입력을 마치려면 빈 줄에서 엔터를 누르세요:")
     while True:
         try:
             line = input()
@@ -123,11 +123,11 @@ def main():
             break
             
     if not texts:
-        print("No text entered. Exiting.")
+        print("입력된 텍스트가 없습니다. 종료합니다.")
         return
 
     # 3. Language Code
-    language = input("Enter Language Code (default: ko): ").strip()
+    language = input("언어 코드를 입력하세요 (기본값: ko): ").strip()
     if not language:
         language = "ko"
     
