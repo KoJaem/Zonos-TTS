@@ -173,21 +173,56 @@ def main():
         print(f"Error loading model: {e}")
         return
 
-    # 2. Receive multiple texts
+    # 2. 텍스트 입력 방법 선택
+    print("텍스트 입력 방법을 선택하세요:")
+    print("  1. 직접 입력 (터미널에서 입력)")
+    print("  2. 파일에서 읽기 (파일 경로 입력)")
+    input_method = input("선택 (1 또는 2, 기본값: 1): ").strip()
+    
     texts = []
-    print("변환할 텍스트를 입력해주세요 (한 줄에 하나씩). 입력을 마치려면 빈 줄에서 엔터를 누르세요:")
-    while True:
+    
+    if input_method == "2":
+        # 파일에서 읽기
+        file_path = input("텍스트 파일 경로를 입력하세요: ").strip()
+        if not file_path:
+            print("파일 경로가 입력되지 않았습니다. 종료합니다.")
+            return
+        
+        if not os.path.exists(file_path):
+            print(f"파일을 찾을 수 없습니다: {file_path}")
+            return
+        
         try:
-            line = input()
-            if not line:
-                break
-            texts.append(line)
-        except EOFError:
-            break
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    # 각 줄을 strip하여 공백 제거 후, 빈 줄이 아닌 경우만 추가
+                    line = line.strip()
+                    if line:  # 빈 줄이 아닌 경우만 추가
+                        texts.append(line)
             
-    if not texts:
-        print("입력된 텍스트가 없습니다. 종료합니다.")
-        return
+            if not texts:
+                print("파일에서 읽은 텍스트가 없습니다. 종료합니다.")
+                return
+            
+            print(f"파일에서 {len(texts)}개의 텍스트를 읽었습니다.")
+        except Exception as e:
+            print(f"파일 읽기 중 오류가 발생했습니다: {e}")
+            return
+    else:
+        # 직접 입력 (기존 로직)
+        print("변환할 텍스트를 입력해주세요 (한 줄에 하나씩). 입력을 마치려면 빈 줄에서 엔터를 누르세요:")
+        while True:
+            try:
+                line = input()
+                if not line:
+                    break
+                texts.append(line)
+            except EOFError:
+                break
+        
+        if not texts:
+            print("입력된 텍스트가 없습니다. 종료합니다.")
+            return
 
     # 3. Language Code
     language = input("언어 코드를 입력하세요 (기본값: ko): ").strip()
