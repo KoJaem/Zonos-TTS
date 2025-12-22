@@ -160,6 +160,59 @@ def generate_audio_for_text(model, text, language, speaker_embedding, output_pat
     torchaudio.save(output_path, wav_out_normalized.unsqueeze(0), sr_out)
     print(f"Saved to {output_path} (normalized to -20dB RMS)")
 
+def merge_audio_files(output_filenames, merged_output_path):
+    """
+    여러 오디오 파일을 순서대로 병합하는 함수
+    
+    Args:
+        output_filenames: 병합할 오디오 파일 경로 리스트
+        merged_output_path: 병합된 오디오 파일 저장 경로
+    """
+    if not output_filenames:
+        print("병합할 파일이 없습니다.")
+        return
+    
+    print(f"\n병합 파일 생성 중... ({len(output_filenames)}개 파일)")
+    
+    try:
+        # 첫 번째 파일을 로드하여 샘플링 레이트 확인
+        first_wav, first_sr = torchaudio.load(output_filenames[0])
+        first_wav = first_wav.mean(0, keepdim=True) if first_wav.dim() > 1 and first_wav.size(0) > 1 else first_wav
+        
+        # 모든 오디오를 저장할 리스트
+        merged_audio = [first_wav]
+        
+        # 나머지 파일들을 순서대로 로드하고 병합
+        for i, filename in enumerate(output_filenames[1:], 1):
+            if not os.path.exists(filename):
+                print(f"경고: {filename} 파일을 찾을 수 없어 병합에서 제외됩니다.")
+                continue
+            
+            wav, sr = torchaudio.load(filename)
+            wav = wav.mean(0, keepdim=True) if wav.dim() > 1 and wav.size(0) > 1 else wav
+            
+            # 샘플링 레이트가 다르면 리샘플링
+            if sr != first_sr:
+                print(f"경고: {filename}의 샘플링 레이트가 다릅니다 ({sr} vs {first_sr}). 리샘플링합니다.")
+                resampler = torchaudio.transforms.Resample(sr, first_sr)
+                wav = resampler(wav)
+            
+            merged_audio.append(wav)
+            print(f"  {i+1}/{len(output_filenames)}: {filename} 추가됨")
+        
+        # 모든 오디오를 순서대로 연결
+        merged_wav = torch.cat(merged_audio, dim=-1)
+        
+        # 병합된 오디오를 정규화
+        merged_wav_normalized = normalize_audio_rms(merged_wav.squeeze(), target_rms_db=-20.0)
+        
+        # 병합된 파일 저장
+        torchaudio.save(merged_output_path, merged_wav_normalized.unsqueeze(0), first_sr)
+        print(f"병합 파일 저장 완료: {merged_output_path}")
+        
+    except Exception as e:
+        print(f"병합 파일 생성 중 오류가 발생했습니다: {e}")
+
 def main():
     print("Initializing multi.py...")
     
@@ -224,7 +277,11 @@ def main():
             print("입력된 텍스트가 없습니다. 종료합니다.")
             return
 
-    # 3. Language Code
+    # 3. 병합 파일 생성 여부 확인
+    merge_choice = input("모든 결과물을 순서대로 병합한 파일도 생성하시겠습니까? (y/n, 기본값: n): ").strip().lower()
+    should_merge = merge_choice in ['y', 'yes', '예', 'ㅇ']
+    
+    # 4. Language Code
     language = input("언어 코드를 입력하세요 (기본값: ko): ").strip()
     if not language:
         language = "ko"
@@ -235,7 +292,7 @@ def main():
         print(f"{i+1}. {t}")
     print("="*40 + "\n")
     
-    # 4. Optional Speaker Audio
+    # 5. Optional Speaker Audio
     speaker_audio_path = "cloneAudio/clone.wav"
     speaker_embedding = None
     
@@ -260,18 +317,27 @@ def main():
         # If no speaker, we probably need to handle make_cond_dict correctly.
         # But the user logic specifically asked to look at this file.
         
-    # 5 & 6. Generate and Save
+    # 6. Generate and Save
     print(f"Generating audio for {len(texts)} items...")
     
     # Randomize seed once for the entire batch (for consistency)
     base_seed = torch.randint(0, 2**32 - 1, (1,)).item()
     print(f"Using seed: {base_seed}\n")
     
+    # 생성된 파일 경로를 저장할 리스트
+    output_filenames = []
+    
     for i, text in enumerate(texts):
         output_filename = f"output{i+1}.wav"
+        output_filenames.append(output_filename)
         print(f"Generating {output_filename} for text: {text[:20]}...")
         
         generate_audio_for_text(model, text, language, speaker_embedding, output_filename, prefix_audio_path="assets/silence_100ms.wav", seed=base_seed)
+    
+    # 7. 병합 파일 생성 (사용자가 요청한 경우)
+    if should_merge:
+        merged_output_path = "merged_output.wav"
+        merge_audio_files(output_filenames, merged_output_path)
 
 if __name__ == "__main__":
     main()
