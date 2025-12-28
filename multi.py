@@ -278,13 +278,28 @@ def main():
             return
 
     # 3. 병합 파일 생성 여부 확인
-    merge_choice = input("모든 결과물을 순서대로 병합한 파일도 생성하시겠습니까? (y/n, 기본값: n): ").strip().lower()
-    should_merge = merge_choice in ['y', 'yes', '예', 'ㅇ']
+    merge_choice = input("모든 결과물을 순서대로 병합한 파일도 생성하시겠습니까? (y/n, 기본값: y): ").strip().lower()
+    # 기본값이 y이므로, 빈 입력이거나 y/yes/예/ㅇ 중 하나면 병합 수행
+    should_merge = not merge_choice or merge_choice in ['y', 'yes', '예', 'ㅇ']
     
     # 4. Language Code
     language = input("언어 코드를 입력하세요 (기본값: ko): ").strip()
     if not language:
         language = "ko"
+    
+    # 5. Seed 값 입력
+    seed_input = input("사용할 seed 값을 입력하세요 (없으면 랜덤으로 생성): ").strip()
+    if seed_input:
+        try:
+            base_seed = int(seed_input)
+            print(f"입력받은 seed 값 사용: {base_seed}")
+        except ValueError:
+            print(f"잘못된 seed 값입니다. 랜덤으로 생성합니다.")
+            base_seed = torch.randint(0, 2**32 - 1, (1,)).item()
+            print(f"랜덤 seed 생성: {base_seed}")
+    else:
+        base_seed = torch.randint(0, 2**32 - 1, (1,)).item()
+        print(f"랜덤 seed 생성: {base_seed}")
         
     print("\n" + "="*40)
     print(f"총 {len(texts)}개의 텍스트가 입력되었습니다:")
@@ -292,7 +307,7 @@ def main():
         print(f"{i+1}. {t}")
     print("="*40 + "\n")
     
-    # 5. Optional Speaker Audio
+    # 6. Optional Speaker Audio
     speaker_audio_path = "cloneAudio/clone.wav"
     speaker_embedding = None
     
@@ -317,11 +332,8 @@ def main():
         # If no speaker, we probably need to handle make_cond_dict correctly.
         # But the user logic specifically asked to look at this file.
         
-    # 6. Generate and Save
+    # 7. Generate and Save
     print(f"Generating audio for {len(texts)} items...")
-    
-    # Randomize seed once for the entire batch (for consistency)
-    base_seed = torch.randint(0, 2**32 - 1, (1,)).item()
     print(f"Using seed: {base_seed}\n")
     
     # 생성된 파일 경로를 저장할 리스트
@@ -334,7 +346,7 @@ def main():
         
         generate_audio_for_text(model, text, language, speaker_embedding, output_filename, prefix_audio_path="assets/silence_100ms.wav", seed=base_seed)
     
-    # 7. 병합 파일 생성 (사용자가 요청한 경우)
+    # 8. 병합 파일 생성 (사용자가 요청한 경우)
     if should_merge:
         merged_output_path = "merged_output.wav"
         merge_audio_files(output_filenames, merged_output_path)

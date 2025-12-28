@@ -25,3 +25,4 @@ ResNet293_SimAM_ASP_base_LDA-128.pt
 
 # cloneAudio
 cloneAudio/*.wav
+*.wav
