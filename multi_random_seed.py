@@ -173,19 +173,36 @@ def main():
         print(f"Error loading model: {e}")
         return
 
-    # 2. Receive multiple texts
-    texts = []
+    # 2. Receive multiple texts with file numbers
+    # 각 문장마다 텍스트와 파일 번호를 함께 저장
+    text_data = []  # (text, file_number) 튜플 리스트
     print("변환할 텍스트를 입력해주세요 (한 줄에 하나씩). 입력을 마치려면 빈 줄에서 엔터를 누르세요:")
     while True:
         try:
             line = input()
             if not line:
                 break
-            texts.append(line)
+            
+            # 파일 번호 입력받기
+            while True:
+                try:
+                    file_num_input = input(f"  '{line[:30]}...' → 몇번 파일인가요? ").strip()
+                    if file_num_input:
+                        file_number = int(file_num_input)
+                        text_data.append((line, file_number))
+                        print(f"  ✓ 파일 번호 {file_number}로 저장되었습니다. (output{file_number}-1.wav, output{file_number}-2.wav, output{file_number}-3.wav)")
+                        print("  다음 텍스트를 입력하세요 (입력을 마치려면 빈 줄에서 엔터):")
+                        break
+                    else:
+                        print("  파일 번호를 입력해주세요.")
+                except ValueError:
+                    print("  올바른 숫자를 입력해주세요.")
+                except EOFError:
+                    return
         except EOFError:
             break
             
-    if not texts:
+    if not text_data:
         print("입력된 텍스트가 없습니다. 종료합니다.")
         return
 
@@ -195,9 +212,9 @@ def main():
         language = "ko"
         
     print("\n" + "="*40)
-    print(f"총 {len(texts)}개의 텍스트가 입력되었습니다:")
-    for i, t in enumerate(texts):
-        print(f"{i+1}. {t}")
+    print(f"총 {len(text_data)}개의 텍스트가 입력되었습니다:")
+    for i, (text, file_num) in enumerate(text_data):
+        print(f"{i+1}. [{file_num}번] {text}")
     print("="*40 + "\n")
     
     # 4. Optional Speaker Audio
@@ -226,17 +243,16 @@ def main():
         # But the user logic specifically asked to look at this file.
         
     # 5 & 6. Generate and Save with RANDOM SEED for each text (각 문장마다 3번씩 실행)
-    total_generations = len(texts) * 3
-    print(f"Generating audio for {len(texts)} items, {total_generations} times total (각 문장당 3번씩)...\n")
+    total_generations = len(text_data) * 3
+    print(f"Generating audio for {len(text_data)} items, {total_generations} times total (각 문장당 3번씩)...\n")
     
-    for i, text in enumerate(texts):
-        sentence_num = i + 1  # 문장 번호 (1부터 시작)
-        print(f"\n[문장 {sentence_num}/{len(texts)}] '{text[:50]}...' 처리 중...")
+    for i, (text, file_number) in enumerate(text_data):
+        print(f"\n[문장 {i+1}/{len(text_data)}] '{text[:50]}...' (파일 번호: {file_number}) 처리 중...")
         
         # 각 문장마다 3번씩 실행
         for attempt in range(3):
             attempt_num = attempt + 1  # 실행 번호 (1부터 시작)
-            output_filename = f"output{sentence_num}-{attempt_num}.wav"
+            output_filename = f"output{file_number}-{attempt_num}.wav"
             
             # 각 실행마다 새로운 랜덤 시드 생성
             random_seed = torch.randint(0, 2**32 - 1, (1,)).item()
