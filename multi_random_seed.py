@@ -225,18 +225,25 @@ def main():
         # If no speaker, we probably need to handle make_cond_dict correctly.
         # But the user logic specifically asked to look at this file.
         
-    # 5 & 6. Generate and Save with RANDOM SEED for each text
-    print(f"Generating audio for {len(texts)} items with random seeds...\n")
+    # 5 & 6. Generate and Save with RANDOM SEED for each text (각 문장마다 3번씩 실행)
+    total_generations = len(texts) * 3
+    print(f"Generating audio for {len(texts)} items, {total_generations} times total (각 문장당 3번씩)...\n")
     
     for i, text in enumerate(texts):
-        output_filename = f"output{i+1}.wav"
+        sentence_num = i + 1  # 문장 번호 (1부터 시작)
+        print(f"\n[문장 {sentence_num}/{len(texts)}] '{text[:50]}...' 처리 중...")
         
-        # Generate a NEW random seed for EACH text
-        random_seed = torch.randint(0, 2**32 - 1, (1,)).item()
-        
-        print(f"Generating {output_filename} for text: {text[:30]}...")
-        
-        generate_audio_for_text(model, text, language, speaker_embedding, output_filename, prefix_audio_path="assets/silence_100ms.wav", seed=random_seed)
+        # 각 문장마다 3번씩 실행
+        for attempt in range(3):
+            attempt_num = attempt + 1  # 실행 번호 (1부터 시작)
+            output_filename = f"output{sentence_num}-{attempt_num}.wav"
+            
+            # 각 실행마다 새로운 랜덤 시드 생성
+            random_seed = torch.randint(0, 2**32 - 1, (1,)).item()
+            
+            print(f"  [{attempt_num}/3] Generating {output_filename} (seed: {random_seed})...")
+            
+            generate_audio_for_text(model, text, language, speaker_embedding, output_filename, prefix_audio_path="assets/silence_100ms.wav", seed=random_seed)
 
 if __name__ == "__main__":
     main()
